@@ -1,0 +1,11 @@
+{
+  "kind": "youtube#channelListResponse",
+  "items": [
+    { "id": "chan_small", "statistics": { "subscriberCount": "12000", "hiddenSubscriberCount": false } },
+    { "id": "chan_mid", "statistics": { "subscriberCount": "150000", "hiddenSubscriberCount": false } },
+    { "id": "chan_tiny", "statistics": { "subscriberCount": "800", "hiddenSubscriberCount": false } },
+    { "id": "chan_huge", "statistics": { "subscriberCount": "8000000", "hiddenSubscriberCount": false } },
+    { "id": "chan_nano", "statistics": { "subscriberCount": "120", "hiddenSubscriberCount": false } },
+    { "id": "chan_hidden", "statistics": { "subscriberCount": "0", "hiddenSubscriberCount": true } }
+  ]
+}

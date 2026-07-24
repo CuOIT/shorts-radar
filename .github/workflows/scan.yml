@@ -1,0 +1,73 @@
+name: scan
+
+on:
+  schedule:
+    # 23:00 UTC daily. GitHub's scheduler drifts under load; a late run is fine
+    # because the scanner looks back 7 days, not 24 hours.
+    - cron: '0 23 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Two scans writing data/raw.json at once would race on the push.
+concurrency:
+  group: scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # No dependencies, so no install step. If npm ci ever appears here,
+      # something was added that should have been questioned first.
+      - name: Test
+        run: npm test
+
+      # This step's exit code is the whole point: a scanner failure must fail
+      # the workflow, not produce a green run with no data.
+      - name: Scan
+        env:
+          YT_API_KEY: ${{ secrets.YT_API_KEY }}
+        run: node src/scan.js
+
+      # always(): a run that failed halfway still burned real API quota, and
+      # data/quota.json has to be committed or tomorrow's guard starts blind.
+      # The job still fails, because the Scan step above already failed.
+      - name: Commit data
+        if: always()
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$(git status --porcelain -- data)" ]; then
+            echo "No data changes to commit."
+            exit 0
+          fi
+
+          if [ -f data/last-run.json ]; then
+            day=$(jq -r '.date' data/last-run.json)
+            new=$(jq -r '.newRecords' data/last-run.json)
+            total=$(jq -r '.totalRecords' data/last-run.json)
+            message="data: ${day} | ${new} new records (${total} total)"
+          else
+            message="data: $(date -u +%Y-%m-%d) | partial run, no summary written"
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data
+          git commit -m "$message"
+          git push origin "HEAD:${BRANCH}"
+          echo "Committed: ${message}"

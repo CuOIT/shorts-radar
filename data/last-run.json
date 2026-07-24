@@ -1,0 +1,18 @@
+{
+  "date": "2026-07-24",
+  "finishedAt": "2026-07-24T04:58:24.937Z",
+  "newRecords": 5,
+  "totalRecords": 249,
+  "stats": {
+    "seedsScanned": 20,
+    "seedsSkipped": 0,
+    "candidates": 906,
+    "rejectedDuration": 123,
+    "rejectedViews": 501,
+    "rejectedSubs": 37,
+    "duplicates": 240,
+    "newRecords": 5,
+    "quotaSpent": 4046,
+    "quotaTripped": false
+  }
+}

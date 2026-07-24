@@ -1,0 +1,15 @@
+{
+  "name": "shorts-radar",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Daily YouTube Shorts outlier scanner for niche discovery",
+  "type": "module",
+  "engines": {
+    "node": ">=22.9.0"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "scan": "node --env-file-if-exists=.env src/scan.js",
+    "dry-run": "node src/scan.js --dry-run"
+  }
+}
