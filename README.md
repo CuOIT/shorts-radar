@@ -71,6 +71,17 @@ Free tier is 10,000 units/day. Twenty seeds costs ~2,060. The guard in `src/quot
 starting new searches at 80% of budget and exits **cleanly with a loud log line** — the failure
 being prevented is a silent quota burn that looks identical to "there are no trends today".
 
+## Viewer
+
+Mở [viewer.html](viewer.html) trực tiếp bằng double-click. Nó tự thử `fetch('data/raw.json')`;
+nếu trình duyệt chặn đọc file cục bộ (Chrome qua `file://` thường bị), bấm **Chọn file khác**
+và tự chọn `data/raw.json`.
+
+Lọc theo score / khoảng subs / seed, gắn tag một chạm (`HOOK_MECHANIC`, `AI_FEASIBLE_1_5`,
+`VERDICT`). Tag lưu trong `localStorage` của trình duyệt — mất khi xoá dữ liệu duyệt web, nên
+bấm **Xuất tag (JSON)** định kỳ để backup. Viewer không gọi API, không cần key; ảnh thumbnail
+tải trực tiếp từ CDN công khai của YouTube (`i.ytimg.com`).
+
 ## Roadmap gates
 
 | Stage | Unlocks when |

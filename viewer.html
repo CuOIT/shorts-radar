@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>shorts-radar viewer</title>
+<style>
+  :root {
+    --bg: #0b0d10;
+    --panel: #14171c;
+    --panel-2: #1b1f26;
+    --border: #262b33;
+    --text: #e7e9ec;
+    --muted: #8b93a1;
+    --accent: #5b9dff;
+    --good: #35c46a;
+    --warn: #e0a83c;
+    --bad: #e0563c;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f4f5f7;
+      --panel: #ffffff;
+      --panel-2: #eef0f3;
+      --border: #dde1e6;
+      --text: #1a1d21;
+      --muted: #5c636e;
+      --accent: #1d6fe0;
+      --good: #1e8a4c;
+      --warn: #a86a10;
+      --bad: #b8371f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+  }
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 14px;
+  }
+  h1 {
+    margin: 0 0 8px;
+    font-size: 16px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  h1 .sub {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--muted);
+  }
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .toolbar label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .toolbar input, .toolbar select {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 13px;
+    width: 100px;
+  }
+  .toolbar select { width: auto; max-width: 200px; }
+  .btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn.secondary {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn.danger { background: var(--bad); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .spacer { flex: 1 1 auto; min-width: 8px; }
+
+  #loader {
+    max-width: 480px;
+    margin: 60px auto;
+    padding: 20px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    text-align: center;
+  }
+  #loader p { color: var(--muted); line-height: 1.5; }
+  #loader.hidden { display: none; }
+
+  main { padding: 12px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 12px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .card.tagged { border-color: var(--good); }
+  .thumb-wrap {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background: var(--panel-2);
+  }
+  .thumb-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .badge {
+    position: absolute;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(0,0,0,.72);
+    color: #fff;
+  }
+  .badge.score { top: 6px; left: 6px; color: var(--good); }
+  .badge.dur { bottom: 6px; right: 6px; }
+  .badge.link {
+    top: 6px; right: 6px;
+    background: rgba(0,0,0,.72);
+    color: #fff;
+    text-decoration: none;
+    line-height: 1;
+  }
+  .body { padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .title {
+    font-size: 12.5px;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 2.7em;
+  }
+  .meta {
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .seed-chip {
+    display: inline-block;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 10.5px;
+    color: var(--muted);
+  }
+  .tagbox {
+    border-top: 1px solid var(--border);
+    padding-top: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .tagbox input[type=text] {
+    width: 100%;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 6px 7px;
+    font-size: 12px;
+  }
+  .row5, .row3 {
+    display: grid;
+    gap: 4px;
+  }
+  .row5 { grid-template-columns: repeat(5, 1fr); }
+  .row3 { grid-template-columns: repeat(3, 1fr); }
+  .tap {
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 7px 0;
+    font-size: 12px;
+    cursor: pointer;
+    min-height: 32px;
+  }
+  .tap.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .tap.verdict-STRONG.active { background: var(--good); border-color: var(--good); }
+  .tap.verdict-MAYBE.active { background: var(--warn); border-color: var(--warn); }
+  .tap.verdict-SKIP.active { background: var(--bad); border-color: var(--bad); }
+
+  .empty { text-align: center; color: var(--muted); padding: 60px 0; }
+  footer {
+    padding: 16px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 11px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>shorts-radar <span class="sub" id="summary">đang tải…</span></h1>
+  <div class="toolbar">
+    <label>Score tối thiểu
+      <input type="number" id="fScore" min="0" step="1" placeholder="0" />
+    </label>
+    <label>Subs từ
+      <input type="number" id="fSubMin" min="0" step="100" placeholder="0" />
+    </label>
+    <label>Subs đến
+      <input type="number" id="fSubMax" min="0" step="1000" placeholder="∞" />
+    </label>
+    <label>Seed
+      <select id="fSeed"><option value="">Tất cả</option></select>
+    </label>
+    <label>
+      <span style="visibility:hidden">-</span>
+      <span style="display:flex; align-items:center; gap:4px;">
+        <input type="checkbox" id="fUntagged" style="width:auto;" /> chỉ chưa tag
+      </span>
+    </label>
+    <div class="spacer"></div>
+    <button class="btn secondary" id="btnLoad">Chọn file khác</button>
+    <button class="btn" id="btnExport">Xuất tag (JSON)</button>
+    <button class="btn danger secondary" id="btnReset">Xoá hết tag</button>
+  </div>
+</header>
+
+<div id="loader">
+  <p><strong>Đang thử tải data/raw.json tự động…</strong></p>
+  <p id="loaderMsg">Nếu trình duyệt của bạn (thường là Chrome) chặn đọc file cục bộ qua <code>file://</code>,
+  hãy chọn file thủ công bên dưới. Đây không phải lỗi — chọn 1 lần cho mỗi phiên xem.</p>
+  <input type="file" id="filePicker" accept="application/json" />
+</div>
+
+<main>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="emptyMsg" style="display:none;">Không có video nào khớp bộ lọc.</div>
+</main>
+
+<footer>Viewer chỉ đọc file JSON cục bộ. Không có API key, không gọi mạng ngoài trừ ảnh thumbnail YouTube.</footer>
+
+<datalist id="mechList"></datalist>
+
+<script>
+"use strict";
+
+const TAG_KEY = "shorts-radar-tags";
+const VERDICTS = ["STRONG", "MAYBE", "SKIP"];
+
+let allRecords = [];
+let tags = loadTags();
+
+function loadTags() {
+  try {
+    return JSON.parse(localStorage.getItem(TAG_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+function saveTags() {
+  localStorage.setItem(TAG_KEY, JSON.stringify(tags));
+}
+function tagFor(videoId) {
+  return tags[videoId] || { HOOK_MECHANIC: "", AI_FEASIBLE_1_5: "", VERDICT: "" };
+}
+function isTagged(videoId) {
+  const t = tagFor(videoId);
+  return !!(t.HOOK_MECHANIC || t.AI_FEASIBLE_1_5 || t.VERDICT);
+}
+function setTag(videoId, field, value) {
+  const t = tagFor(videoId);
+  t[field] = value;
+  tags[videoId] = t;
+  saveTags();
+}
+
+// ---- data loading: try fetch (works via http server or Firefox file://),
+// fall back to a manual file picker (needed on Chrome's file:// CORS block) ----
+const loaderEl = document.getElementById("loader");
+const loaderMsg = document.getElementById("loaderMsg");
+const filePicker = document.getElementById("filePicker");
+
+async function tryAutoLoad() {
+  try {
+    const res = await fetch("data/raw.json", { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const json = await res.json();
+    onDataLoaded(json);
+  } catch (err) {
+    loaderMsg.textContent =
+      "Tự động tải thất bại (" + err.message + "). Chọn file data/raw.json thủ công bên dưới.";
+  }
+}
+
+filePicker.addEventListener("change", () => {
+  const file = filePicker.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      onDataLoaded(JSON.parse(reader.result));
+    } catch {
+      loaderMsg.textContent = "File không phải JSON hợp lệ.";
+    }
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById("btnLoad").addEventListener("click", () => {
+  loaderEl.classList.remove("hidden");
+  filePicker.click();
+});
+
+function onDataLoaded(json) {
+  allRecords = Array.isArray(json.records) ? json.records : [];
+  loaderEl.classList.add("hidden");
+  populateSeedFilter();
+  populateMechList();
+  render();
+}
+
+function populateSeedFilter() {
+  const sel = document.getElementById("fSeed");
+  const current = sel.value;
+  const seeds = [...new Set(allRecords.map((r) => r.seed).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Tất cả</option>' +
+    seeds.map((s) => `<option value="${escapeAttr(s)}">${escapeHtml(s)}</option>`).join("");
+  sel.value = current;
+}
+
+function populateMechList() {
+  const dl = document.getElementById("mechList");
+  const used = new Set(Object.values(tags).map((t) => t.HOOK_MECHANIC).filter(Boolean));
+  dl.innerHTML = [...used].sort().map((m) => `<option value="${escapeAttr(m)}"></option>`).join("");
+}
+
+// ---- filtering + render ----
+function getFilters() {
+  return {
+    scoreMin: Number(document.getElementById("fScore").value) || 0,
+    subMin: document.getElementById("fSubMin").value === "" ? null : Number(document.getElementById("fSubMin").value),
+    subMax: document.getElementById("fSubMax").value === "" ? null : Number(document.getElementById("fSubMax").value),
+    seed: document.getElementById("fSeed").value,
+    onlyUntagged: document.getElementById("fUntagged").checked,
+  };
+}
+
+function applyFilters(records, f) {
+  return records.filter((r) => {
+    if (r.score < f.scoreMin) return false;
+    if (f.subMin !== null && r.subs < f.subMin) return false;
+    if (f.subMax !== null && r.subs > f.subMax) return false;
+    if (f.seed && r.seed !== f.seed) return false;
+    if (f.onlyUntagged && isTagged(r.videoId)) return false;
+    return true;
+  });
+}
+
+function taggedCount() {
+  return Object.keys(tags).filter((id) => isTagged(id)).length;
+}
+
+function refreshSummary(visibleCount) {
+  document.getElementById("summary").textContent =
+    `${visibleCount} / ${allRecords.length} video · ${taggedCount()} đã tag`;
+}
+
+// Called after any tag edit. A card that just got tagged (or cleared) may need
+// to leave/enter the grid when "chỉ chưa tag" is active, so re-filter in that
+// case; otherwise just patch the summary count without re-rendering the grid.
+function afterTagChange() {
+  if (document.getElementById("fUntagged").checked) {
+    render();
+  } else {
+    refreshSummary(document.querySelectorAll(".card").length);
+  }
+}
+
+function render() {
+  const f = getFilters();
+  const visible = applyFilters(allRecords, f).slice().sort((a, b) => b.score - a.score);
+
+  refreshSummary(visible.length);
+
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  document.getElementById("emptyMsg").style.display = visible.length ? "none" : "block";
+
+  const frag = document.createDocumentFragment();
+  for (const r of visible) frag.appendChild(renderCard(r));
+  grid.appendChild(frag);
+}
+
+function renderCard(r) {
+  const t = tagFor(r.videoId);
+  const card = document.createElement("div");
+  card.className = "card" + (isTagged(r.videoId) ? " tagged" : "");
+
+  card.innerHTML = `
+    <div class="thumb-wrap">
+      <img src="${escapeAttr(r.thumbnail || "")}" loading="lazy" decoding="async"
+           onerror="this.style.opacity=0.15" alt="" />
+      <span class="badge score">${Math.round(r.score)}</span>
+      <span class="badge dur">${r.durationSec}s</span>
+      <a class="badge link" href="${escapeAttr(r.url)}" target="_blank" rel="noopener noreferrer">▶</a>
+    </div>
+    <div class="body">
+      <div class="title" title="${escapeAttr(r.title)}">${escapeHtml(r.title)}</div>
+      <div class="meta">
+        <span>${fmt(r.subs)} sub</span>
+        <span>${fmt(r.views)} view</span>
+        <span class="seed-chip">${escapeHtml(r.seed || "?")}</span>
+      </div>
+      <div class="meta">${escapeHtml(r.channelTitle || "")}</div>
+      <div class="tagbox">
+        <input type="text" class="mech" placeholder="hook mechanic…" list="mechList" value="${escapeAttr(t.HOOK_MECHANIC)}" />
+        <div class="row5 feasible"></div>
+        <div class="row3 verdict"></div>
+      </div>
+    </div>
+  `;
+
+  const mechInput = card.querySelector(".mech");
+  mechInput.addEventListener("change", () => {
+    setTag(r.videoId, "HOOK_MECHANIC", mechInput.value.trim());
+    populateMechList();
+    card.classList.toggle("tagged", isTagged(r.videoId));
+    afterTagChange();
+  });
+
+  const feasibleRow = card.querySelector(".feasible");
+  for (let n = 1; n <= 5; n++) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "tap" + (String(n) === t.AI_FEASIBLE_1_5 ? " active" : "");
+    b.textContent = n;
+    b.addEventListener("click", () => {
+      const next = String(n) === tagFor(r.videoId).AI_FEASIBLE_1_5 ? "" : String(n);
+      setTag(r.videoId, "AI_FEASIBLE_1_5", next);
+      feasibleRow.querySelectorAll(".tap").forEach((el, i) => el.classList.toggle("active", i + 1 === n && next !== ""));
+      card.classList.toggle("tagged", isTagged(r.videoId));
+      afterTagChange();
+    });
+    feasibleRow.appendChild(b);
+  }
+
+  const verdictRow = card.querySelector(".verdict");
+  for (const v of VERDICTS) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "tap verdict-" + v + (v === t.VERDICT ? " active" : "");
+    b.textContent = v;
+    b.addEventListener("click", () => {
+      const next = v === tagFor(r.videoId).VERDICT ? "" : v;
+      setTag(r.videoId, "VERDICT", next);
+      verdictRow.querySelectorAll(".tap").forEach((el) => el.classList.remove("active"));
+      if (next) b.classList.add("active");
+      card.classList.toggle("tagged", isTagged(r.videoId));
+      afterTagChange();
+    });
+    verdictRow.appendChild(b);
+  }
+
+  return card;
+}
+
+// ---- export / reset ----
+document.getElementById("btnExport").addEventListener("click", () => {
+  const rows = Object.entries(tags)
+    .filter(([, t]) => t.HOOK_MECHANIC || t.AI_FEASIBLE_1_5 || t.VERDICT)
+    .map(([videoId, t]) => ({ videoId, ...t }));
+
+  const blob = new Blob([JSON.stringify(rows, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "shorts-radar-tags-" + new Date().toISOString().slice(0, 10) + ".json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+document.getElementById("btnReset").addEventListener("click", () => {
+  if (!confirm("Xoá toàn bộ tag đã gắn trong trình duyệt này? Không thể hoàn tác.")) return;
+  tags = {};
+  saveTags();
+  render();
+});
+
+for (const id of ["fScore", "fSubMin", "fSubMax", "fSeed", "fUntagged"]) {
+  document.getElementById(id).addEventListener("input", render);
+}
+
+function fmt(n) {
+  n = Number(n) || 0;
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + "k";
+  return String(n);
+}
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+}
+function escapeAttr(s) {
+  return escapeHtml(s).replace(/"/g, "&quot;");
+}
+
+tryAutoLoad();
+</script>
+</body>
+</html>
