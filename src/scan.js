@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import { AUDIO_AI_SEEDS, FILTERS, SEED_KEYWORDS } from './config.js';
+import { SEED_KEYWORDS as LONGFORM_SEEDS, FILTERS as LONGFORM_FILTERS } from './longform/config.js';
+import { runLongformScan } from './longform/pipeline.js';
 import { runScan } from './pipeline.js';
 import { createQuotaGuard } from './quota.js';
 import { createStore } from './store.js';
@@ -8,10 +10,12 @@ import { createClient } from './youtube.js';
 /**
  * CLI entry point.
  *
- *   node src/scan.js                  live run, requires YT_API_KEY
- *   node src/scan.js --dry-run        offline fixtures, zero network, writes nothing
- *   node src/scan.js --seeds=audio    scan the audio-AI seed set instead
- *   node src/scan.js --seeds=all      scan both sets in one run
+ *   node src/scan.js                    live run, requires YT_API_KEY
+ *   node src/scan.js --dry-run          offline fixtures, zero network, writes nothing
+ *   node src/scan.js --seeds=audio      scan the audio-AI seed set instead
+ *   node src/scan.js --seeds=all        scan both Shorts sets in one run
+ *   node src/scan.js --mode=longform    Vietnamese long-form audio stories
+ *                                       (own seeds, own scoring, own data file)
  *
  * Exit codes: 0 success, 1 failure. A non-zero exit is what makes the GitHub
  * Actions workflow fail loudly instead of committing an empty day.
@@ -46,16 +50,27 @@ async function main() {
   return liveRun();
 }
 
+function isLongform() {
+  return process.argv.includes('--mode=longform');
+}
+
 async function liveRun() {
   const apiKey = process.env.YT_API_KEY;
   if (!apiKey) {
     throw new Error('YT_API_KEY is not set. Put it in .env locally or in GitHub Secrets for CI.');
   }
 
+  const longform = isLongform();
   const now = new Date();
-  const store = createStore();
   const client = createClient({ apiKey });
-  const { name: seedSetName, seeds } = selectedSeeds();
+
+  // Long-form writes to its own dataset. Mixing the two would be meaningless:
+  // the scores come from different formulas and are not comparable.
+  const store = createStore({ dataset: longform ? 'longform' : 'raw' });
+
+  const { name: seedSetName, seeds } = longform
+    ? { name: 'longform', seeds: LONGFORM_SEEDS }
+    : selectedSeeds();
 
   const persistedQuota = await store.loadQuota(now);
   const quota = createQuotaGuard({ spent: persistedQuota.spent });
@@ -70,7 +85,9 @@ async function liveRun() {
 
   let result;
   try {
-    result = await runScan({ client, quota, now, seeds, existingIds });
+    result = longform
+      ? await runLongformScan({ client, quota, now, seeds, existingIds })
+      : await runScan({ client, quota, now, seeds, existingIds });
   } finally {
     // Persist spend even on failure — a crashed run still burned real quota.
     await store.saveQuota({ date: persistedQuota.date, spent: quota.spent });
@@ -142,12 +159,22 @@ async function dryRun() {
 }
 
 function printSummary(stats, totalRecords) {
+  const longform = isLongform();
+
+  const durationLabel = longform
+    ? `rejected: outside ${LONGFORM_FILTERS.MIN_SECONDS / 60}-${LONGFORM_FILTERS.MAX_SECONDS / 60}min`
+    : `rejected: over ${FILTERS.MAX_SECONDS}s`;
+  const viewsLabel = longform
+    ? `rejected: under ${LONGFORM_FILTERS.MIN_VIEWS} views`
+    : `rejected: under ${FILTERS.MIN_VIEWS} views`;
+
   const rows = [
     ['seeds scanned', `${stats.seedsScanned} (skipped ${stats.seedsSkipped})`],
     ['candidates', stats.candidates],
-    [`rejected: over ${FILTERS.MAX_SECONDS}s`, stats.rejectedDuration],
-    [`rejected: under ${FILTERS.MIN_VIEWS} views`, stats.rejectedViews],
+    [durationLabel, stats.rejectedDuration],
+    [viewsLabel, stats.rejectedViews],
     ['rejected: channel size', stats.rejectedSubs],
+    ...(longform ? [['rejected: no channel median', stats.rejectedNoMedian]] : []),
     ['duplicates skipped', stats.duplicates],
     ['NEW RECORDS', stats.newRecords],
     ['total on file', totalRecords],

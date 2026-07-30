@@ -12,13 +12,16 @@ const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url));
  * Writes go through a temp file + rename so a crashed run can never leave a
  * half-written raw.json in the repo.
  */
-export function createStore({ root = REPO_ROOT, logger = console } = {}) {
+export function createStore({ root = REPO_ROOT, logger = console, dataset = 'raw' } = {}) {
   const dataDir = path.join(root, 'data');
   const archiveDir = path.join(dataDir, 'archive');
 
-  const rawPath = path.join(dataDir, 'raw.json');
+  const rawPath = path.join(dataDir, `${dataset}.json`);
+  const lastRunPath = path.join(dataDir, `${dataset}-last-run.json`);
+
+  // Quota is deliberately NOT per-dataset: the 10,000 units/day belong to the
+  // API key, not to a scan mode. Shorts and long-form runs draw from one pot.
   const quotaPath = path.join(dataDir, 'quota.json');
-  const lastRunPath = path.join(dataDir, 'last-run.json');
 
   return {
     paths: { dataDir, archiveDir, rawPath, quotaPath, lastRunPath },
@@ -41,7 +44,7 @@ export function createStore({ root = REPO_ROOT, logger = console } = {}) {
 
       if (monthChanged || tooBig) {
         await mkdir(archiveDir, { recursive: true });
-        const target = await freePath(archiveDir, `raw-${existing.month ?? 'unknown'}`);
+        const target = await freePath(archiveDir, `${dataset}-${existing.month ?? 'unknown'}`);
         await rename(rawPath, target);
         logger.log(
           `[store] rotated ${path.basename(rawPath)} -> ${path.relative(root, target)} ` +

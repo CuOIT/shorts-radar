@@ -28,10 +28,19 @@ try {
         throw "Thiếu file .env. Tạo nó với dòng: YT_API_KEY=<key-cua-ban>"
     }
 
-    Write-Host "==> Đang scan..." -ForegroundColor Cyan
-    npm run scan
+    # --- Quét Shorts (hình ảnh) ---
+    Write-Host "==> [1/2] Scan Shorts..." -ForegroundColor Cyan
+    node --env-file-if-exists=.env src/scan.js
     if ($LASTEXITCODE -ne 0) {
-        throw "Scan thất bại (exit $LASTEXITCODE). Không commit gì cả."
+        throw "Scan Shorts thất bại (exit $LASTEXITCODE). Không commit gì cả."
+    }
+
+    # --- Quét long-form (truyện audio tiếng Việt) ---
+    # Quota dùng chung một pot 10k/ngày, guard trong quota.js tự chặn nếu cạn.
+    Write-Host "==> [2/2] Scan long-form..." -ForegroundColor Cyan
+    node --env-file-if-exists=.env src/scan.js --mode=longform
+    if ($LASTEXITCODE -ne 0) {
+        throw "Scan long-form thất bại (exit $LASTEXITCODE). Không commit gì cả."
     }
 
     # --- Chỉ commit khi data/ thực sự thay đổi ---
@@ -41,13 +50,19 @@ try {
         return
     }
 
-    # --- Lấy số liệu cho commit message từ last-run.json ---
+    # --- Gộp số liệu của cả hai chế độ vào commit message ---
     $day = (Get-Date).ToString('yyyy-MM-dd')
-    $msg = "data: $day | cap nhat local"
-    if (Test-Path 'data/last-run.json') {
-        $run = Get-Content 'data/last-run.json' -Raw | ConvertFrom-Json
-        $msg = "data: $($run.date) | $($run.newRecords) new records ($($run.totalRecords) total)"
+    $parts = @()
+    foreach ($item in @(
+            @{ File = 'data/raw-last-run.json';      Label = 'shorts' },
+            @{ File = 'data/longform-last-run.json'; Label = 'longform' })) {
+        if (Test-Path $item.File) {
+            $run = Get-Content $item.File -Raw | ConvertFrom-Json
+            $parts += "$($item.Label) +$($run.newRecords)/$($run.totalRecords)"
+            $day = $run.date
+        }
     }
+    $msg = if ($parts.Count) { "data: $day | " + ($parts -join ' | ') } else { "data: $day | cap nhat local" }
 
     git add data
     git commit -m $msg

@@ -53,14 +53,21 @@ export function createClient({
   }
 
   return {
-    /** Cost: 100 units. Returns raw search.list response. */
-    search({ q, publishedAfter, maxResults, regionCode, relevanceLanguage }) {
+    /**
+     * Cost: 100 units. Returns raw search.list response.
+     *
+     * `videoDuration` is a coarse pre-filter only:
+     *   'short'  = under 4 minutes  (NOT "is a Short")
+     *   'medium' = 4 to 20 minutes
+     *   'long'   = over 20 minutes
+     * The real duration filter is always applied client-side on
+     * contentDetails.duration, because these buckets do not match our thresholds.
+     */
+    search({ q, publishedAfter, maxResults, regionCode, relevanceLanguage, videoDuration = 'short' }) {
       return request('search', {
         part: 'snippet',
         type: 'video',
-        // NOTE: this means "under 4 minutes", not "is a Short". It narrows the
-        // candidate set cheaply; the real filter is on contentDetails.duration.
-        videoDuration: 'short',
+        videoDuration,
         order: 'viewCount',
         q,
         publishedAfter,
@@ -79,12 +86,26 @@ export function createClient({
       });
     },
 
-    /** Cost: 1 unit per call, up to 50 ids. */
+    /**
+     * Cost: 1 unit per call, up to 50 ids.
+     *
+     * contentDetails carries relatedPlaylists.uploads, which is the only way to
+     * page a channel's own uploads — needed to compute a channel view median.
+     */
     channels(ids) {
       return request('channels', {
-        part: 'statistics',
+        part: 'statistics,contentDetails',
         id: ids.join(','),
         maxResults: API.BATCH_SIZE,
+      });
+    },
+
+    /** Cost: 1 unit per call. Lists the most recent items of an uploads playlist. */
+    playlistItems(playlistId, maxResults) {
+      return request('playlistItems', {
+        part: 'contentDetails',
+        playlistId,
+        maxResults,
       });
     },
   };

@@ -56,10 +56,10 @@ jobs:
             exit 0
           fi
 
-          if [ -f data/last-run.json ]; then
-            day=$(jq -r '.date' data/last-run.json)
-            new=$(jq -r '.newRecords' data/last-run.json)
-            total=$(jq -r '.totalRecords' data/last-run.json)
+          if [ -f data/raw-last-run.json ]; then
+            day=$(jq -r '.date' data/raw-last-run.json)
+            new=$(jq -r '.newRecords' data/raw-last-run.json)
+            total=$(jq -r '.totalRecords' data/raw-last-run.json)
             message="data: ${day} | ${new} new records (${total} total)"
           else
             message="data: $(date -u +%Y-%m-%d) | partial run, no summary written"
