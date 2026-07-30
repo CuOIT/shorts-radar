@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { FILTERS, SEED_KEYWORDS } from './config.js';
+import { AUDIO_AI_SEEDS, FILTERS, SEED_KEYWORDS } from './config.js';
 import { runScan } from './pipeline.js';
 import { createQuotaGuard } from './quota.js';
 import { createStore } from './store.js';
@@ -8,14 +8,32 @@ import { createClient } from './youtube.js';
 /**
  * CLI entry point.
  *
- *   node src/scan.js              live run, requires YT_API_KEY
- *   node src/scan.js --dry-run    offline fixtures, zero network, writes nothing
+ *   node src/scan.js                  live run, requires YT_API_KEY
+ *   node src/scan.js --dry-run        offline fixtures, zero network, writes nothing
+ *   node src/scan.js --seeds=audio    scan the audio-AI seed set instead
+ *   node src/scan.js --seeds=all      scan both sets in one run
  *
  * Exit codes: 0 success, 1 failure. A non-zero exit is what makes the GitHub
  * Actions workflow fail loudly instead of committing an empty day.
  */
 
 const isDryRun = process.argv.includes('--dry-run');
+
+const SEED_SETS = {
+  visual: SEED_KEYWORDS,
+  audio: AUDIO_AI_SEEDS,
+  all: [...SEED_KEYWORDS, ...AUDIO_AI_SEEDS],
+};
+
+function selectedSeeds() {
+  const arg = process.argv.find((a) => a.startsWith('--seeds='));
+  const name = arg ? arg.slice('--seeds='.length) : 'visual';
+  const seeds = SEED_SETS[name];
+  if (!seeds) {
+    throw new Error(`--seeds=${name} không hợp lệ. Chọn: ${Object.keys(SEED_SETS).join(', ')}`);
+  }
+  return { name, seeds };
+}
 
 main().catch((error) => {
   console.error(`[scan] FAILED: ${error.message}`);
@@ -37,6 +55,7 @@ async function liveRun() {
   const now = new Date();
   const store = createStore();
   const client = createClient({ apiKey });
+  const { name: seedSetName, seeds } = selectedSeeds();
 
   const persistedQuota = await store.loadQuota(now);
   const quota = createQuotaGuard({ spent: persistedQuota.spent });
@@ -45,13 +64,13 @@ async function liveRun() {
   const existingIds = new Set(raw.records.map((record) => record.videoId));
 
   console.log(
-    `[scan] ${now.toISOString()} | ${SEED_KEYWORDS.length} seeds | ` +
+    `[scan] ${now.toISOString()} | seed set "${seedSetName}" (${seeds.length} seeds) | ` +
       `${raw.records.length} records on file | quota already spent today: ${persistedQuota.spent}`,
   );
 
   let result;
   try {
-    result = await runScan({ client, quota, now, existingIds });
+    result = await runScan({ client, quota, now, seeds, existingIds });
   } finally {
     // Persist spend even on failure — a crashed run still burned real quota.
     await store.saveQuota({ date: persistedQuota.date, spent: quota.spent });

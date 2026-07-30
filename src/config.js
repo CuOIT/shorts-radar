@@ -34,6 +34,30 @@ export const SEED_KEYWORDS = [
   'liquid mixing macro',
 ];
 
+/**
+ * Audio-AI seeds. Same rule as above: these describe the HOOK, not the topic.
+ *
+ * "audio ai" as a seed would return tech-news and app reviews — talking heads,
+ * no hook. What travels on Shorts is the *demonstration*: a voice being swapped,
+ * a stem being pulled out of a finished track, a before/after A-B comparison.
+ * That is what these strings try to catch.
+ *
+ * Kept separate from SEED_KEYWORDS so you can scan one set or the other, and so
+ * the viewer's seed filter cleanly separates this experiment from the original data.
+ */
+export const AUDIO_AI_SEEDS = [
+  'ai voice clone comparison',
+  'ai cover song original vs ai',
+  'stem separation isolate vocals',
+  'ai music generation prompt',
+  'text to speech emotion demo',
+  'voice changer real time',
+  'ai remove background noise before after',
+  'ai singing voice transfer',
+  'sound design from scratch ai',
+  'ai mastering before after',
+];
+
 export const FILTERS = {
   /** Only look at uploads from the last N days — catches trends on the way up. */
   LOOKBACK_DAYS: 7,
