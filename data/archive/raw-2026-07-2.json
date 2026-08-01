@@ -1,0 +1,29 @@
+{
+  "month": "2026-07",
+  "updatedAt": "2026-07-30T01:26:32.375Z",
+  "count": 1,
+  "records": [
+    {
+      "videoId": "QFfvAhm5klQ",
+      "url": "https://www.youtube.com/shorts/QFfvAhm5klQ",
+      "title": "Blackpink x S.H.I.T (Ai Cover) #babymonster #blackpink #lisa #jennie #jisoo #rose #sugarhoneyicetea",
+      "channelId": "UCdv2u8ZgCOmb1ZPgbi4iKVw",
+      "channelTitle": "Bibi 🎬\nK-pop edit ",
+      "thumbnail": "https://i.ytimg.com/vi/QFfvAhm5klQ/maxresdefault.jpg",
+      "publishedAt": "2026-07-24T22:18:40Z",
+      "firstSeenAt": "2026-07-30T01:26:32.375Z",
+      "seed": "ai cover song original vs ai",
+      "durationSec": 28,
+      "views": 61892,
+      "likes": 1509,
+      "comments": 15,
+      "subs": 15300,
+      "outlier": 4.045,
+      "vph": 502.7,
+      "score": 10.962,
+      "HOOK_MECHANIC": "",
+      "AI_FEASIBLE_1_5": "",
+      "VERDICT": ""
+    }
+  ]
+}
