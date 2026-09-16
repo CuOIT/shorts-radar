@@ -1,18 +1,18 @@
 {
-  "date": "2026-09-13",
-  "finishedAt": "2026-09-13T03:00:02.217Z",
-  "newRecords": 79,
-  "totalRecords": 1323,
+  "date": "2026-09-16",
+  "finishedAt": "2026-09-16T03:00:02.568Z",
+  "newRecords": 56,
+  "totalRecords": 1579,
   "stats": {
     "seedsScanned": 20,
     "seedsSkipped": 0,
-    "candidates": 903,
-    "rejectedDuration": 125,
-    "rejectedViews": 462,
-    "rejectedSubs": 25,
-    "duplicates": 212,
-    "newRecords": 79,
-    "quotaSpent": 2024,
+    "candidates": 918,
+    "rejectedDuration": 120,
+    "rejectedViews": 466,
+    "rejectedSubs": 38,
+    "duplicates": 238,
+    "newRecords": 56,
+    "quotaSpent": 2025,
     "quotaTripped": false
   }
 }
